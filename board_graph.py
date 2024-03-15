@@ -1,8 +1,40 @@
 #!/usr/bin/env python
+import re
+import string
 
+import geopandas as gpd
 import matplotlib.pyplot as plt
 import networkx as nx
+import matplotlib.patches as patches
 import numpy as np
+
+from matplotlib.path import Path
+from PIL import Image
+from shapely.geometry import GeometryCollection, LineString, Polygon
+from xml.dom import minidom
+
+def svg_parse(path):
+      """
+      Stolen from https://gis.stackexchange.com/a/301682
+      """
+      commands = { 'M' : (Path.MOVETO,),   'L' : (Path.LINETO,),
+                   'Q' : (Path.CURVE3,)*2, 'C' : (Path.CURVE4,)*3,
+                   'Z' : (Path.CLOSEPOLY,) }
+      path_re = re.compile(r'([MLHVCSQTAZ])([^MLHVCSQTAZ]+)', re.IGNORECASE)
+      float_re = re.compile(r'(?:[\s,]*)([+-]?\d+(?:\.\d+)?)')
+      vertices = []
+      codes = []
+      last = (0,0)
+      for cmd, values in path_re.findall(path):
+          points = [float(v) for v in float_re.findall(values)]
+          points = np.array(points).reshape((len(points)//2,2))
+          if cmd in string.ascii_lowercase:
+              points += last
+          cmd = cmd.capitalize()
+          last = points[-1]
+          codes.extend( commands[cmd] )
+          vertices.extend( points.tolist() )
+      return codes, vertices
 
 province_types = ["inland", "water", "coastal"]
 provinces = {
@@ -675,6 +707,84 @@ province_borders = [
     ("Swi", "Tyr"),
     ("Swi", "Pie"),
 ]
+province_positions = {
+    'Boh': (566.3279569892474, 595.459595959596),
+    'Bud': (662.7795698924732, 679.8751803751804),
+    'Gal': (700.5215053763442, 608.446608946609),
+    'Tri': (581.704301075269, 715.2287157287158),
+    'Tyr': (531.3817204301076, 646.6861471861472),
+    'Vie': (604.0698924731183, 635.8636363636364),
+    'Cly': (314.7150537634409, 347.9848484848485),
+    'Edi': (335.6827956989248, 381.8953823953824),
+    'Lvp': (323.80107526881727, 441.0584415584416),
+    'Lon': (343.3709677419356, 494.4494949494949),
+    'Wal': (308.42473118279577, 477.1334776334776),
+    'Yor': (346.16666666666674, 436.0079365079365),
+    'Bre': (258.80107526881727, 561.5490620490621),
+    'Bur': (400.6827956989248, 636.5851370851371),
+    'Gas': (297.241935483871, 678.4321789321789),
+    'Mar': (371.32795698924735, 714.507215007215),
+    'Par': (367.13440860215064, 597.6240981240982),
+    'Pic': (364.3387096774194, 562.2705627705628),
+    'Ber': (546.7580645161291, 500.94300144300144),
+    'Kie': (497.83333333333337, 482.90548340548344),
+    'Mun': (504.1236559139786, 614.9401154401155),
+    'Pru': (615.951612903226, 492.2849927849928),
+    'Ruh': (449.60752688172056, 562.9920634920635),
+    'Sil': (587.9946236559141, 543.5115440115441),
+    'Apu': (561.4354838709678, 807.5808080808081),
+    'Nap': (553.0483870967743, 831.3903318903319),
+    'Pie': (445.41397849462373, 699.3556998556999),
+    'Rom': (505.5215053763442, 793.8722943722944),
+    'Tus': (484.5537634408603, 760.6832611832613),
+    'Ven': (502.72580645161304, 695.0266955266956),
+    'Lvn': (710.3064516129033, 434.56493506493507),
+    'Mos': (927.6720430107529, 433.8434343434343),
+    'Sev': (871.7580645161291, 632.2561327561327),
+    'StP': (786.4892473118281, 327.0613275613275),
+    'Ukr': (787.8870967741937, 578.1435786435786),
+    'War': (655.0913978494625, 534.1320346320347),
+    'Ank': (936.7580645161291, 816.9603174603175),
+    'Arm': (1127.5645161290322, 824.8968253968254),
+    'Con': (798.3709677419356, 809.7453102453103),
+    'Smy': (799.7688172043012, 902.0974025974026),
+    'Syr': (1146.4354838709678, 942.501443001443),
+    'Alb': (644.6075268817206, 822.0108225108225),
+    'Bel': (395.79032258064524, 531.9675324675325),
+    'Bul': (707.5107526881721, 775.8347763347763),
+    'Den': (532.0806451612904, 440.3369408369408),
+    'Fin': (708.209677419355, 258.51875901875906),
+    'Gre': (713.1021505376345, 897.0468975468975),
+    'Hol': (414.6612903225807, 508.8795093795094),
+    'Nwy': (532.0806451612904, 304.6948051948052),
+    'NAf': (188.2096774193549, 951.1594516594516),
+    'Por': (77.77956989247318, 749.8607503607504),
+    'Rum': (753.6397849462367, 730.3802308802309),
+    'Ser': (656.4892473118281, 753.468253968254),
+    'Spa': (179.8225806451613, 756.3542568542568),
+    'Swe': (620.8440860215055, 324.17532467532465),
+    'Tun': (430.7365591397851, 928.0714285714286),
+    'Adr': (571.220430107527, 774.391774891775),
+    'Aeg': (747.3494623655915, 898.4898989898991),
+    'Bal': (613.8548387096776, 439.61544011544015),
+    'Bar': (835.4139784946238, 36.296536796536884),
+    'Bla': (892.725806451613, 737.5952380952381),
+    'Eas': (861.97311827957, 974.9689754689755),
+    'Eng': (283.9623655913979, 526.1955266955267),
+    'Bot': (651.5967741935485, 337.1623376623377),
+    'GoL': (359.44623655913983, 777.2777777777778),
+    'Hel': (459.39247311827967, 453.32395382395384),
+    'Ion': (596.3817204301076, 943.9444444444445),
+    'Iri': (220.36021505376348, 482.90548340548344),
+    'Mid': (65.19892473118281, 617.8261183261184),
+    'NAt': (97.34946236559145, 267.17676767676767),
+    'Nth': (400.6827956989248, 391.2748917748918),
+    'Nrg': (453.10215053763454, 136.58513708513703),
+    'Ska': (509.715053763441, 362.41486291486297),
+    'Tyn': (479.6612903225807, 837.8838383838383),
+    'Wes': (303.5322580645162, 854.478354978355),
+    'Swi': (450.3064516129033, 653.9011544011544)
+}
 country_colours ={
     "Austria": "red", #tuple(c/255 for c in (200,143,134)),
     "England": "royalblue", #tuple(c/255 for c in (242,196,227)),
@@ -688,13 +798,57 @@ country_colours ={
     "none": tuple(c/255 for c in (0,0,0)),#"dimgrey"
 
 }
+# game_map = minidom.parse("standard.svg")
+
+# province_svg_paths = [
+#     path.getAttribute('d') for path in game_map.getElementsByTagName('path')
+# ]
+# path_ids = [
+#     path.getAttribute('id') for path in game_map.getElementsByTagName('path')
+# ]
+# game_map.unlink()
+# polys = []
+# for i, province_svg_path in enumerate(province_svg_paths):
+#     codes, verts = svg_parse(province_svg_path)
+#     mpl_path = Path(verts, codes)
+#     poly = mpl_path.to_polygons()
+#     if len(poly) == 0:
+#         print(f"{path_ids[i]} is a line")
+#         polys.append(LineString(mpl_path.vertices))
+#     else:
+#         polys.append(Polygon(poly[0]))
+# multi_poly = GeometryCollection(polys)
+
+img = Image.open("map.png")
+game_map = np.array(img)
+game_map[np.where(game_map <= 1)] = 0
+game_map[np.logical_and((game_map > 1), (game_map < 59))] = 1
+game_map[np.where(game_map >= 59)] = 2
+
+fig = plt.figure(1, frameon=False, figsize=(1300/100, 1000/100), dpi=100)
+ax = fig.add_axes([0, 0, 1, 1])
+ax.axis('off')
+# plt.figure(figsize=(1300/100, 1000/100), dpi=100, frameon=False)
+ax.imshow(game_map, cmap="magma", aspect="auto")
+# plt.gca().set_axis_off()
+# plt.subplots_adjust(top = 1, bottom = 0, right = 1, left = 0, 
+#             hspace = 0, wspace = 0)
+# plt.axis("off")
+# plt.margins(0,0)
+# plt.gca().xaxis.set_major_locator(plt.NullLocator())
+# plt.gca().yaxis.set_major_locator(plt.NullLocator())
+# plt.tight_layout()
+fig.savefig("map_recolour.png", transparent=True, bbox_inches = 'tight', pad_inches = 0, dpi=100)
 G = nx.Graph()
 
 G.add_nodes_from([(key, provinces[key]) for key in provinces])
 G.add_edges_from(province_borders)
 pos = nx.spring_layout(G, seed=6942069)
+# pos = {province: (pos_coord[0], -pos_coord[1]) for province, pos_coord in province_positions.items()}
+for province, pos_coord in province_positions.items():
+    pos[province] = (pos_coord[0], -pos_coord[1])
 # pos['Mun'] = np.array([0,0])
-fig, ax =plt.subplots(figsize=(16, 9))
+fig, ax = plt.subplots(figsize=(16, 9))
 for country in country_colours:
     nodelist = []
     for province in provinces:
@@ -706,7 +860,7 @@ for country in country_colours:
                            node_size=2000,
                            edgecolors="black",
                            ax=ax)
- 
+
 nx.draw_networkx_edges(G, pos, ax=ax)
 # labels_dict= {province: provinces[province]["long_name"] for province in provinces}
 nx.draw_networkx_labels(G, pos, ax=ax)
@@ -714,4 +868,28 @@ nx.draw_networkx_labels(G, pos, labels={"Swi": "Swi"}, font_color="w", ax=ax)
 plt.tight_layout()
 ax.axis("off")
 plt.savefig("Diplomacy_map_graph.png")
+
+# p = gpd.GeoSeries(polys)
+# p.plot(facecolor="w", edgecolor='k')
+# plt.close("all")
 plt.show()
+# fig = plt.figure(figsize=(12,9))
+# ax = fig.add_subplot(111)
+# ax.imshow(game_map, origin="upper", cmap="magma", aspect="auto")
+
+# coords = []
+
+# def onclick(event):
+#     global ix, iy
+#     ix, iy = event.xdata, event.ydata
+#     print (f'x = {ix}, y = {iy}')
+
+#     global coords
+#     coords.append((ix, iy))
+    
+#     if len(coords) == len(provinces):
+#         fig.canvas.mpl_disconnect(cid)
+
+#     return coords
+# cid = fig.canvas.mpl_connect('button_press_event', onclick)
+# plt.show()
