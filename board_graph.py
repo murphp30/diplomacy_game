@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+
+import json
 import re
 import string
 
@@ -240,7 +242,8 @@ provinces = {
         "long_name": "St. Petersburg",
         "type": "coastal",
         "home_power": "Russia",
-        "supply_centre": True
+        "supply_centre": True,
+        "split_coast": True
     },
     "Ukr": {
         "long_name": "Ukraine",
@@ -300,7 +303,8 @@ provinces = {
         "long_name": "Bulgaria",
         "type": "coastal",
         "home_power": "Neutral",
-        "supply_centre": True
+        "supply_centre": True,
+        "split_coast": True
     },
     "Den": {
         "long_name": "Denmark",
@@ -360,7 +364,8 @@ provinces = {
         "long_name": "Spain",
         "type": "coastal",
         "home_power": "Neutral",
-        "supply_centre": True
+        "supply_centre": True,
+        "split_coast": True
     },
     "Swe": {
         "long_name": "Sweden",
@@ -555,8 +560,8 @@ province_borders = [
     ("Gas", "Mid"),
     ("Gas", "Par"),
     ("Gas", "Mar"),
-    ("Gas", "Spa"),
-    ("Mar", "Spa"),
+    ("Gas", "Spa", {"coast": "north"}),
+    ("Mar", "Spa", {"coast": "south"}),
     ("Mar", "Pie"),
     ("Mar", "GoL"),
     ("Par", "Pic"),
@@ -600,7 +605,7 @@ province_borders = [
     ("Ven", "Adr"),
     ("Lvn", "Bal"),
     ("Lvn", "Bot"),
-    ("Lvn", "StP"),
+    ("Lvn", "StP", {"coast": "south"}),
     ("Lvn", "Mos"),
     ("Lvn", "War"),
     ("Mos", "War"),
@@ -611,10 +616,10 @@ province_borders = [
     ("Sev", "Ukr"),
     ("Sev", "Arm"),
     ("Sev", "Bla"),
-    ("StP", "Bot"),
-    ("StP", "Fin"),
-    ("StP", "Nwy"),
-    ("StP", "Bar"),
+    ("StP", "Bot", {"coast": "south"}),
+    ("StP", "Fin", {"coast": "south"}),
+    ("StP", "Nwy", {"coast": "north"}),
+    ("StP", "Bar", {"coast": "north"}),
     ("Ukr", "War"),
     ("Ukr", "Rum"),
     ("Ank", "Con"),
@@ -625,7 +630,7 @@ province_borders = [
     ("Arm", "Syr"),
     ("Arm", "Smy"),
     ("Con", "Aeg"),
-    ("Con", "Bul"),
+    ("Con", "Bul", {"coast":["north","south"]}),
     ("Con", "Bla"),
     ("Con", "Smy"),
     ("Smy", "Aeg"),
@@ -640,10 +645,10 @@ province_borders = [
     ("Bel", "Nth"),
     ("Bel", "Hol"),
     ("Bul", "Ser"),
-    ("Bul", "Rum"),
-    ("Bul", "Bla"),
-    ("Bul", "Aeg"),
-    ("Bul", "Gre"),
+    ("Bul", "Rum", {"coast": "north"}),
+    ("Bul", "Bla", {"coast": "north"}),
+    ("Bul", "Aeg", {"coast": "south"}),
+    ("Bul", "Gre", {"coast": "south"}),
     ("Den", "Hel"),
     ("Den", "Nth"),
     ("Den", "Ska"),
@@ -666,13 +671,13 @@ province_borders = [
     ("NAf", "Wes"),
     ("NAf", "Tun"),
     ("Por", "Mid"),
-    ("Por", "Spa"),
+    ("Por", "Spa", {"coast": ["north","south"]}),
     ("Rum", "Bla"),
     ("Rum", "Bul"),
     ("Rum", "Ser"),
-    ("Spa", "Mid"),
-    ("Spa", "GoL"),
-    ("Spa", "Wes"),
+    ("Spa", "Mid", {"coast": ["north","south"]}),
+    ("Spa", "GoL", {"coast": "south"}),
+    ("Spa", "Wes", {"coast": "south"}),
     ("Swe", "Ska"),
     ("Swe", "Bot"),
     ("Swe", "Bal"),
@@ -796,100 +801,100 @@ country_colours ={
     "Neutral": tuple(c/255 for c in (229,198,161)),#"navajowhite",
     "sea": tuple(c/255 for c in (194,223,233)),#"aqua",
     "none": tuple(c/255 for c in (0,0,0)),#"dimgrey"
-
 }
-# game_map = minidom.parse("standard.svg")
 
-# province_svg_paths = [
-#     path.getAttribute('d') for path in game_map.getElementsByTagName('path')
-# ]
-# path_ids = [
-#     path.getAttribute('id') for path in game_map.getElementsByTagName('path')
-# ]
-# game_map.unlink()
-# polys = []
-# for i, province_svg_path in enumerate(province_svg_paths):
-#     codes, verts = svg_parse(province_svg_path)
-#     mpl_path = Path(verts, codes)
-#     poly = mpl_path.to_polygons()
-#     if len(poly) == 0:
-#         print(f"{path_ids[i]} is a line")
-#         polys.append(LineString(mpl_path.vertices))
-#     else:
-#         polys.append(Polygon(poly[0]))
-# multi_poly = GeometryCollection(polys)
-
-img = Image.open("map.png")
-game_map = np.array(img)
-game_map[np.where(game_map <= 1)] = 0
-game_map[np.logical_and((game_map > 1), (game_map < 59))] = 1
-game_map[np.where(game_map >= 59)] = 2
-
-fig = plt.figure(1, frameon=False, figsize=(1300/100, 1000/100), dpi=100)
-ax = fig.add_axes([0, 0, 1, 1])
-ax.axis('off')
-# plt.figure(figsize=(1300/100, 1000/100), dpi=100, frameon=False)
-ax.imshow(game_map, cmap="magma", aspect="auto")
-# plt.gca().set_axis_off()
-# plt.subplots_adjust(top = 1, bottom = 0, right = 1, left = 0, 
-#             hspace = 0, wspace = 0)
-# plt.axis("off")
-# plt.margins(0,0)
-# plt.gca().xaxis.set_major_locator(plt.NullLocator())
-# plt.gca().yaxis.set_major_locator(plt.NullLocator())
-# plt.tight_layout()
-fig.savefig("map_recolour.png", transparent=True, bbox_inches = 'tight', pad_inches = 0, dpi=100)
 G = nx.Graph()
 
 G.add_nodes_from([(key, provinces[key]) for key in provinces])
 G.add_edges_from(province_borders)
-pos = nx.spring_layout(G, seed=6942069)
-# pos = {province: (pos_coord[0], -pos_coord[1]) for province, pos_coord in province_positions.items()}
-for province, pos_coord in province_positions.items():
-    pos[province] = (pos_coord[0], -pos_coord[1])
-# pos['Mun'] = np.array([0,0])
-fig, ax = plt.subplots(figsize=(16, 9))
-for country in country_colours:
-    nodelist = []
-    for province in provinces:
-        if provinces[province]["home_power"] == country:
-            nodelist.append(province)
-    nx.draw_networkx_nodes(G, pos, 
-                           nodelist=nodelist,
-                           node_color=country_colours[country],
-                           node_size=2000,
-                           edgecolors="black",
-                           ax=ax)
 
-nx.draw_networkx_edges(G, pos, ax=ax)
-# labels_dict= {province: provinces[province]["long_name"] for province in provinces}
-nx.draw_networkx_labels(G, pos, ax=ax)
-nx.draw_networkx_labels(G, pos, labels={"Swi": "Swi"}, font_color="w", ax=ax)
-plt.tight_layout()
-ax.axis("off")
-plt.savefig("Diplomacy_map_graph.png")
+if __name__ == "__main__":
+    """
+    load game map png and change colors so that:
+    borders/switzerland = 0
+    land = 1
+    sea = 2
+    """
+    with open("map_state_turn_000.json", "w") as f:
+        json.dump(G, f, default=nx.node_link_data)
 
-# p = gpd.GeoSeries(polys)
-# p.plot(facecolor="w", edgecolor='k')
-# plt.close("all")
-plt.show()
-# fig = plt.figure(figsize=(12,9))
-# ax = fig.add_subplot(111)
-# ax.imshow(game_map, origin="upper", cmap="magma", aspect="auto")
+    img = Image.open("map.png")
+    game_map = np.array(img)
+    game_map[np.where(game_map <= 1)] = 0
+    game_map[np.logical_and((game_map > 1), (game_map < 59))] = 1
+    game_map[np.where(game_map >= 59)] = 2
 
-# coords = []
+    # game_map = minidom.parse("standard.svg")
 
-# def onclick(event):
-#     global ix, iy
-#     ix, iy = event.xdata, event.ydata
-#     print (f'x = {ix}, y = {iy}')
+    # province_svg_paths = [
+    #     path.getAttribute('d') for path in game_map.getElementsByTagName('path')
+    # ]
+    # path_ids = [
+    #     path.getAttribute('id') for path in game_map.getElementsByTagName('path')
+    # ]
+    # game_map.unlink()
+    # polys = []
+    # for i, province_svg_path in enumerate(province_svg_paths):
+    #     codes, verts = svg_parse(province_svg_path)
+    #     mpl_path = Path(verts, codes)
+    #     poly = mpl_path.to_polygons()
+    #     if len(poly) == 0:
+    #         print(f"{path_ids[i]} is a line")
+    #         polys.append(LineString(mpl_path.vertices))
+    #     else:
+    #         polys.append(Polygon(poly[0]))
+    # multi_poly = GeometryCollection(polys)
+    fig = plt.figure(1, frameon=False, figsize=(1300/100, 1000/100), dpi=100)
+    ax = fig.add_axes([0, 0, 1, 1])
+    ax.axis('off')
+    ax.imshow(game_map, cmap="magma", aspect="auto")
+    fig.savefig("map_recolour.png", transparent=True, bbox_inches = 'tight', pad_inches = 0, dpi=100)
 
-#     global coords
-#     coords.append((ix, iy))
-    
-#     if len(coords) == len(provinces):
-#         fig.canvas.mpl_disconnect(cid)
+    # plot graph representation of map
+    pos = nx.spring_layout(G, seed=6942069)
+    for province, pos_coord in province_positions.items():
+        pos[province] = (pos_coord[0], -pos_coord[1])
+    fig, ax = plt.subplots(figsize=(16, 9))
+    for country in country_colours:
+        nodelist = []
+        for province in provinces:
+            if provinces[province]["home_power"] == country:
+                nodelist.append(province)
+        nx.draw_networkx_nodes(G, pos, 
+                            nodelist=nodelist,
+                            node_color=country_colours[country],
+                            node_size=2000,
+                            edgecolors="black",
+                            ax=ax)
 
-#     return coords
-# cid = fig.canvas.mpl_connect('button_press_event', onclick)
-# plt.show()
+    nx.draw_networkx_edges(G, pos, ax=ax)
+    # labels_dict= {province: provinces[province]["long_name"] for province in provinces}
+    nx.draw_networkx_labels(G, pos, ax=ax)
+    nx.draw_networkx_labels(G, pos, labels={"Swi": "Swi"}, font_color="w", ax=ax)
+    plt.tight_layout()
+    ax.axis("off")
+    plt.savefig("Diplomacy_map_graph.png")
+    plt.show()
+
+    # point and click to find province locations
+
+    # fig = plt.figure(figsize=(12,9))
+    # ax = fig.add_subplot(111)
+    # ax.imshow(game_map, origin="upper", cmap="magma", aspect="auto")
+
+    # coords = []
+
+    # def onclick(event):
+    #     global ix, iy
+    #     ix, iy = event.xdata, event.ydata
+    #     print (f'x = {ix}, y = {iy}')
+
+    #     global coords
+    #     coords.append((ix, iy))
+        
+    #     if len(coords) == len(provinces):
+    #         fig.canvas.mpl_disconnect(cid)
+
+    #     return coords
+    # cid = fig.canvas.mpl_connect('button_press_event', onclick)
+    # plt.show()
