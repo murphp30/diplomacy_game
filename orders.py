@@ -5,13 +5,17 @@ Resolves orders for a given turn
 """
 def get_edge(from_province, to_province):
     edge = []
+    coast = None
     for province in [from_province, to_province]:
         # assume no provinces with split coast are adjacent
         # True for a standard game 
+        
         if "_" in province:
             province, coast = province.split("_")
-        else:
-            coast = None
+            if "S" in coast:
+                coast = "south"
+            elif "N" in caost:
+                coast = "north"
         edge.append(province)
     return edge, coast
 
@@ -25,13 +29,15 @@ def move_is_valid(move_order, game_state):
     move_order_split = move_order.split(" ")
     unit_type = move_order_split[0]
     from_province, to_province = move_order_split[1].split("-")
-    
+    edge, coast = get_edge(from_province, to_province)
+   
+    from_province, to_province = edge
     # check if provinces are adjacent
     if to_province not in game_state.G[from_province]:
         return False
     
     # check coasts match
-    edge, coast = get_edge(from_province, to_province)        
+            
     if game_state.G.edges[edge].get("coast") != coast:
         return False
     

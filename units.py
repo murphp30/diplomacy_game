@@ -19,9 +19,10 @@ class Unit:
     Convoy: F Bla C A Ank-Sev 
         (Fleet Black Sea convoy army Ankara to Sevastopol)
     """
-    def __init__(self, home_power, current_province):
+    def __init__(self, home_power, current_province, dislodged=False):
         self.home_power = home_power
         self.current_province = current_province
+        self.dislodged = dislodged
     
     def __repr__(self):
         return f"Unit at {self.current_province}"

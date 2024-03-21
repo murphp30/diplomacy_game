@@ -1,6 +1,6 @@
 import json
 import unittest
-
+import pdb
 import networkx as nx
 
 from orders import order_is_valid
@@ -23,7 +23,10 @@ class TestOrderValidator(unittest.TestCase):
         with open("map_state_turn_000.json", "r") as f:
             g_data = json.load(f)
         G = nx.node_link_graph(g_data)
-        fleets = [Fleet("England", "Eng"), Fleet("Italy", "Rom"), Fleet("Austria", "Tri")]
+        fleets = [Fleet("England", "Eng"),
+                  Fleet("Italy", "Rom"),
+                  Fleet("Austria", "Tri"),
+                  Fleet("Russia", "StP", coast="south")]
         game_state = GameStateFromInputs(G, fleets)
     
         self.assertTrue(order_is_valid(fleets[0].move("Bre"), game_state))
@@ -36,6 +39,11 @@ class TestOrderValidator(unittest.TestCase):
         self.assertFalse(order_is_valid(fleets[1].move("Apu"), game_state))
 
         self.assertFalse(order_is_valid(fleets[2].move("Vie"), game_state))
+        # pdb.set_trace()
+        self.assertTrue(order_is_valid(fleets[3].move("Bot"), game_state))
+        self.assertTrue(order_is_valid(fleets[3].move("Fin"), game_state))
+        self.assertFalse(order_is_valid(fleets[3].move("Nwy"), game_state))
+        self.assertFalse(order_is_valid(fleets[3].move("Bar"), game_state))
 
     def test_support(self):
         with open("map_state_turn_000.json", "r") as f:
