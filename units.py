@@ -54,7 +54,10 @@ class Unit:
     def support(self, order):
         # some sort of wrapper for hold and move orders
         order_to_support = order
-        order_string = f" S " + order_to_support 
+        if "Holds" in order_to_support:
+            order_string = f" S " + order_to_support.split(" Holds")[0]
+        else:
+            order_string = f" S " + order_to_support
         return order_string
 
     @base_order
@@ -77,9 +80,9 @@ class Fleet(Unit):
         self.type = "F"
         # self.coast = coast
         if coast == "south":
-            self.current_province = current_province + " SC"
+            self.current_province = current_province + "_SC"
         elif coast == "north":
-            self.current_province = current_province + " NC"
+            self.current_province = current_province + "_NC"
         else:
             pass
         self.allowed_province_types = ["water", "coastal"]
