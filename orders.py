@@ -14,7 +14,7 @@ def get_edge(from_province, to_province):
             province, coast = province.split("_")
             if "S" in coast:
                 coast = "south"
-            elif "N" in caost:
+            elif "N" in coast:
                 coast = "north"
         edge.append(province)
     return edge, coast
